@@ -14,32 +14,13 @@ A daily documentation of my journey learning blockchain, Bitcoin, and cryptocurr
 ## 🎯 Learning Goals
 
 - [ ] Understand Bitcoin fundamentals and blockchain technology
-- [ ] Learn about cryptocurrency economics and use cases
-- [ ] Implement basic blockchain concepts in code
-- [ ] Explore altcoins and their unique features
 - [ ] Build practical projects using blockchain technology
 
 ## 📖 Resources
 
-- **Book**: Grokking Bitcoin
+- **Webpages**: Grokking Bitcoin
 - **Languages**: Python, JavaScript
 - **Focus Areas**: Blockchain architecture, cryptography, distributed systems
 
-## 🛠️ Tech Stack
-
-- **Python**: Core blockchain implementations
-- **JavaScript/Node.js**: Web3 integrations
-- **Git**: Version control and progress tracking
-
-## 📝 Daily Format
-
-Each day's folder contains:
-- `notes.md` - Detailed notes from reading/learning
-- `concepts.md` - Key takeaways and explanations
-- `code/` - Practical implementations
-- `resources.md` - Links and references
-
----
-
-*Last updated: February 17, 2026*
+*Last updated: February 18, 2026*
 
