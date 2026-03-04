@@ -1,6 +1,8 @@
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/bK2yja45)
 # Week 2 Challenge: Coin Smith
 
+## [Youtube Link](https://youtu.be/WQDdAIrE13E?si=2kezsGiqhwagpNya)
+
 Build a **safe PSBT transaction builder** that:
 
 - selects coins (UTXOs),
