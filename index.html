@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coin Smith — PSBT Builder</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #070b14;
+      --bg-soft: #0d1324;
+      --panel: #121a2f;
+      --panel-soft: #18223d;
+      --line: #2a3555;
+      --line-soft: #25314d;
+      --text: #e2e8f0;
+      --muted: #8ea0be;
+      --accent: #f7931a;
+      --accent-soft: #ffb454;
+      --ok: #4ade80;
+      --danger: #f87171;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background:
+        radial-gradient(900px 500px at 15% -10%, rgba(247, 147, 26, 0.16), transparent 60%),
+        radial-gradient(700px 500px at 95% 0%, rgba(96, 165, 250, 0.15), transparent 65%),
+        linear-gradient(180deg, #080d18 0%, #05080f 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: linear-gradient(180deg, rgba(18, 26, 47, 0.92), rgba(10, 16, 31, 0.92));
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.01em;
+    }
+
+    header span {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .header-pill {
+      margin-left: auto;
+      font-size: 0.74rem;
+      color: #ffdcae;
+      border: 1px solid rgba(247, 147, 26, 0.45);
+      background: rgba(247, 147, 26, 0.12);
+      border-radius: 999px;
+      padding: 5px 10px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    .hero {
+      margin-bottom: 20px;
+      padding: 18px 20px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: linear-gradient(140deg, rgba(24, 34, 61, 0.9), rgba(14, 20, 36, 0.9));
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26);
+    }
+
+    .hero-title {
+      font-size: 1.02rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #f9fbff;
+    }
+
+    .hero-sub {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-bottom: 10px;
+    }
+
+    .hero-tags {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .loader-card {
+      background: linear-gradient(165deg, rgba(24, 34, 61, 0.95), rgba(18, 26, 47, 0.95));
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 28px;
+      box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+    }
+
+    .loader-card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #b6c5df;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .loader-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    select {
+      background: var(--bg-soft);
+      border: 1px solid var(--line);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      flex: 1;
+      min-width: 200px;
+      outline: none;
+    }
+
+    select:focus {
+      border-color: rgba(247, 147, 26, 0.65);
+      box-shadow: 0 0 0 3px rgba(247, 147, 26, 0.2);
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.14s, opacity 0.15s, box-shadow 0.15s;
+    }
+
+    .btn:hover { opacity: 0.92; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary {
+      background: linear-gradient(180deg, var(--accent-soft), var(--accent));
+      color: #111;
+      box-shadow: 0 8px 18px rgba(247, 147, 26, 0.25);
+    }
+
+    .btn-secondary {
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+      color: var(--text);
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat {
+      background: linear-gradient(180deg, rgba(24, 34, 61, 0.96), rgba(14, 20, 36, 0.96));
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+      transition: transform 0.14s ease;
+    }
+
+    .stat:hover { transform: translateY(-2px); }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .badge-green  { background: rgba(34, 197, 94, 0.14); color: #77f3a7; border-color: rgba(74, 222, 128, 0.35); }
+    .badge-red    { background: rgba(239, 68, 68, 0.16); color: #fda4a4; border-color: rgba(248, 113, 113, 0.35); }
+    .badge-orange { background: rgba(247, 147, 26, 0.14); color: #ffd19a; border-color: rgba(247, 147, 26, 0.35); }
+    .badge-blue   { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border-color: rgba(96, 165, 250, 0.35); }
+    .badge-purple { background: rgba(168, 85, 247, 0.16); color: #d8b4fe; border-color: rgba(192, 132, 252, 0.35); }
+    .badge-gray   { background: rgba(148, 163, 184, 0.13); color: #b2c2d8; border-color: rgba(148, 163, 184, 0.3); }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 700px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(24, 34, 61, 0.95), rgba(14, 20, 36, 0.95));
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+    }
+
+    .card h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #b6c5df;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 14px;
+    }
+
+    .flow-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+    }
+
+    .flow-box {
+      border: 1px solid var(--line-soft);
+      background: rgba(13, 19, 36, 0.75);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .flow-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 5px;
+    }
+
+    .flow-value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #eaf0fb;
+    }
+
+    .flow-track {
+      height: 8px;
+      border-radius: 99px;
+      background: #0b1325;
+      border: 1px solid var(--line-soft);
+      overflow: hidden;
+      margin-top: 10px;
+      display: flex;
+    }
+
+    .flow-seg-pay { background: linear-gradient(90deg, #ef4444, #f97316); }
+    .flow-seg-fee { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .flow-seg-change { background: linear-gradient(90deg, #22c55e, #4ade80); }
+
+    .item {
+      background: rgba(10, 16, 31, 0.92);
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+    }
+
+    .item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .item-txid {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+      word-break: break-all;
+      margin-top: 4px;
+    }
+
+    .item-value {
+      font-weight: 700;
+      color: var(--ok);
+      white-space: nowrap;
+    }
+
+    .item-value.outgoing { color: var(--danger); }
+
+    .warnings { margin-bottom: 20px; }
+
+    .warning {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: rgba(24, 34, 61, 0.9);
+      border-left: 3px solid #f59e0b;
+      border-radius: 0 8px 8px 0;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+      font-size: 0.875rem;
+    }
+
+    .warning.error { border-left-color: #ef4444; }
+    .warning-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .warning-title { font-weight: 600; margin-bottom: 2px; }
+    .warning-desc  { color: #b7c6de; font-size: 0.8rem; }
+
+    .psbt-box {
+      background: rgba(10, 16, 31, 0.9);
+      border: 1px solid var(--line-soft);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: monospace;
+      font-size: 0.72rem;
+      word-break: break-all;
+      color: #b7c6de;
+      max-height: 100px;
+      overflow-y: auto;
+      margin-top: 10px;
+    }
+
+    .meta-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .meta-card {
+      background: linear-gradient(180deg, rgba(24, 34, 61, 0.95), rgba(14, 20, 36, 0.95));
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 18px;
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .meta-card .label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .meta-card .value {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6f84a5;
+    }
+
+    .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty h2   { font-size: 1.1rem; margin-bottom: 6px; }
+    .empty p    { font-size: 0.875rem; }
+
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #2d3148;
+      border-top-color: #f7931a;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+
+    .btc-icon {
+      display: inline-block;
+      font-weight: 800;
+      line-height: 1;
+      background: linear-gradient(180deg, #ffd28a 0%, #f9a826 45%, #f7931a 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow:
+        0 0 6px rgba(247, 147, 26, 0.82),
+        0 0 16px rgba(249, 168, 38, 0.68),
+        0 0 30px rgba(255, 196, 77, 0.45);
+      animation: neonPulse 1.8s ease-in-out infinite;
+    }
+
+    .btc-icon.header { font-size: 1.5rem; }
+    .btc-icon.empty { font-size: 3rem; }
+
+    @keyframes neonPulse {
+      0%, 100% {
+        filter: brightness(1);
+        text-shadow:
+          0 0 6px rgba(247, 147, 26, 0.82),
+          0 0 16px rgba(249, 168, 38, 0.68),
+          0 0 30px rgba(255, 196, 77, 0.45);
+      }
+      50% {
+        filter: brightness(1.18);
+        text-shadow:
+          0 0 8px rgba(255, 214, 140, 0.95),
+          0 0 22px rgba(249, 168, 38, 0.84),
+          0 0 40px rgba(247, 147, 26, 0.64);
+      }
+    }
+
+    .muted-note {
+      font-size: 0.76rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="btc-icon header">₿</span>
+  <h1>Coin Smith</h1>
+  <span>PSBT Transaction Builder</span>
+  <span class="header-pill">Wallet Lab UI</span>
+</header>
+
+<div class="container">
+
+  <div class="hero">
+    <div class="hero-title">Build, inspect, and explain Bitcoin transactions visually</div>
+    <div class="hero-sub">Load a fixture, generate a PSBT, and inspect fee, change, RBF, locktime, and safety warnings at a glance.</div>
+    <div class="hero-tags">
+      <span class="badge badge-blue">PSBT (BIP-174)</span>
+      <span class="badge badge-orange">RBF Aware</span>
+      <span class="badge badge-purple">Locktime Aware</span>
+      <span class="badge badge-green">Wallet Safety Checks</span>
+    </div>
+  </div>
+
+  <!-- Fixture Loader -->
+  <div class="loader-card">
+    <h2>Load Fixture</h2>
+    <div class="loader-row">
+      <select id="fixtureSelect">
+        <option value="">— select a fixture —</option>
+      </select>
+      <button class="btn btn-primary" id="buildBtn" disabled>
+        Build PSBT
+      </button>
+      <label class="btn btn-secondary" style="cursor:pointer">
+        Upload JSON
+        <input type="file" id="fileUpload" accept=".json" style="display:none" />
+      </label>
+    </div>
+  </div>
+
+  <!-- Loading indicator -->
+  <div id="loadingEl" class="hidden" style="text-align:center;padding:40px">
+    <span class="spinner"></span> Building transaction...
+  </div>
+
+  <!-- Error display -->
+  <div id="errorEl" class="hidden">
+    <div class="warning error">
+      <span class="warning-icon">❌</span>
+      <div>
+        <div class="warning-title" id="errorCode"></div>
+        <div class="warning-desc"  id="errorMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results (hidden until built) -->
+  <div id="resultsEl" class="hidden">
+
+    <!-- Summary Stats -->
+    <div class="summary" id="summaryEl"></div>
+
+    <!-- Value flow -->
+    <div class="card" style="margin-bottom:20px">
+      <h3>Transaction Value Flow</h3>
+      <div id="flowEl"></div>
+    </div>
+
+    <!-- RBF + Locktime -->
+    <div class="meta-row" id="metaRow"></div>
+
+    <!-- Warnings -->
+    <div class="warnings" id="warningsEl"></div>
+
+    <!-- Inputs + Outputs -->
+    <div class="two-col">
+      <div class="card">
+        <h3>Selected Inputs (UTXOs)</h3>
+        <div id="inputsList"></div>
+      </div>
+      <div class="card">
+        <h3>Outputs</h3>
+        <div id="outputsList"></div>
+      </div>
+    </div>
+
+    <!-- PSBT -->
+    <div class="card">
+      <h3 style="display:flex;justify-content:space-between;align-items:center">
+        PSBT (base64)
+        <button class="btn btn-secondary" style="font-size:0.75rem;padding:6px 12px"
+          onclick="copyPsbt()">Copy</button>
+      </h3>
+      <div class="psbt-box" id="psbtBox"></div>
+    </div>
+
+  </div>
+
+  <!-- Empty state -->
+  <div id="emptyEl" class="empty">
+    <div class="empty-icon"><span class="btc-icon empty">₿</span></div>
+    <h2>No transaction built yet</h2>
+    <p>Select a fixture from the dropdown above and click <strong>Build PSBT</strong></p>
+  </div>
+
+</div>
+
+<script>
+// ─── Warning metadata ────────────────────────────────────────────────────────
+const WARNING_INFO = {
+  HIGH_FEE:      { icon: '🔥', title: 'High Fee',        desc: 'Fee exceeds 1,000,000 sats or rate exceeds 200 sat/vb — unusually expensive transaction.' },
+  DUST_CHANGE:   { icon: '🌫️', title: 'Dust Change',     desc: 'Change output is below 546 sats (dust threshold) — most nodes would reject this output.' },
+  SEND_ALL:      { icon: '📤', title: 'Send All',         desc: 'No change output created — all leftover sats consumed as fee.' },
+  RBF_SIGNALING: { icon: '🔄', title: 'RBF Signaling',   desc: 'Transaction opts into Replace-By-Fee (BIP-125) — can be fee-bumped before confirmation.' },
+};
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let currentFixture = null;
+let lastReport     = null;
+
+// ─── DOM refs ────────────────────────────────────────────────────────────────
+const fixtureSelect = document.getElementById('fixtureSelect');
+const buildBtn      = document.getElementById('buildBtn');
+const fileUpload    = document.getElementById('fileUpload');
+const loadingEl     = document.getElementById('loadingEl');
+const errorEl       = document.getElementById('errorEl');
+const resultsEl     = document.getElementById('resultsEl');
+const emptyEl       = document.getElementById('emptyEl');
+
+// ─── Load fixture list on startup ────────────────────────────────────────────
+fetch('/api/fixtures')
+  .then(r => r.json())
+  .then(({ fixtures }) => {
+    fixtures.sort().forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      fixtureSelect.appendChild(opt);
+    });
+  });
+
+// ─── Fixture select change ────────────────────────────────────────────────────
+fixtureSelect.addEventListener('change', () => {
+  if (!fixtureSelect.value) { buildBtn.disabled = true; return; }
+  fetch(`/api/fixtures/${fixtureSelect.value}`)
+    .then(r => r.json())
+    .then(data => {
+      currentFixture = data;
+      buildBtn.disabled = false;
+    });
+});
+
+// ─── File upload ──────────────────────────────────────────────────────────────
+fileUpload.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      currentFixture = JSON.parse(ev.target.result);
+      buildBtn.disabled = false;
+      fixtureSelect.value = '';
+    } catch {
+      showError('PARSE_ERROR', 'Could not parse uploaded JSON file');
+    }
+  };
+  reader.readAsText(file);
+});
+
+// ─── Build button ─────────────────────────────────────────────────────────────
+buildBtn.addEventListener('click', async () => {
+  if (!currentFixture) return;
+
+  setView('loading');
+
+  try {
+    const res  = await fetch('/api/build', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(currentFixture),
+    });
+    const data = await res.json();
+
+    if (!data.ok) {
+      showError(data.error.code, data.error.message);
+      return;
+    }
+
+    lastReport = data;
+    renderReport(data);
+    setView('results');
+
+  } catch (e) {
+    showError('NETWORK_ERROR', e.message);
+  }
+});
+
+// ─── Render report ────────────────────────────────────────────────────────────
+function renderReport(r) {
+  renderSummary(r);
+  renderFlow(r);
+  renderMeta(r);
+  renderWarnings(r.warnings);
+  renderInputs(r.selected_inputs);
+  renderOutputs(r.outputs, r.change_index);
+  document.getElementById('psbtBox').textContent = r.psbt_base64;
+}
+
+function renderSummary(r) {
+  const totalIn  = r.selected_inputs.reduce((s, u) => s + u.value_sats, 0);
+  const totalOut = r.outputs.reduce((s, o) => s + o.value_sats, 0);
+
+  document.getElementById('summaryEl').innerHTML = `
+    <div class="stat">
+      <div class="stat-label">Inputs</div>
+      <div class="stat-value">${r.selected_inputs.length}</div>
+      <div class="stat-sub">${fmt(totalIn)} sats in</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Outputs</div>
+      <div class="stat-value">${r.outputs.length}</div>
+      <div class="stat-sub">${fmt(totalOut)} sats out</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Fee</div>
+      <div class="stat-value">${fmt(r.fee_sats)}</div>
+      <div class="stat-sub">${Number(r.fee_rate_sat_vb).toFixed(2)} sat/vb</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Size</div>
+      <div class="stat-value">${r.vbytes}</div>
+      <div class="stat-sub">vbytes</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Network</div>
+      <div class="stat-value" style="font-size:1rem">${r.network}</div>
+      <div class="stat-sub">${r.strategy}</div>
+    </div>
+  `;
+}
+
+function renderFlow(r) {
+  const totalIn = r.selected_inputs.reduce((sum, input) => sum + input.value_sats, 0);
+  const change = r.outputs.filter(o => o.is_change).reduce((sum, output) => sum + output.value_sats, 0);
+  const payments = r.outputs.filter(o => !o.is_change).reduce((sum, output) => sum + output.value_sats, 0);
+  const fee = r.fee_sats;
+
+  const safeTotal = Math.max(totalIn, 1);
+  const payPct = Math.max((payments / safeTotal) * 100, 0);
+  const feePct = Math.max((fee / safeTotal) * 100, 0);
+  const changePct = Math.max((change / safeTotal) * 100, 0);
+
+  document.getElementById('flowEl').innerHTML = `
+    <div class="flow-grid">
+      <div class="flow-box">
+        <div class="flow-label">Total In</div>
+        <div class="flow-value">${fmt(totalIn)} sats</div>
+      </div>
+      <div class="flow-box">
+        <div class="flow-label">Payments</div>
+        <div class="flow-value" style="color:#fca5a5">${fmt(payments)} sats</div>
+      </div>
+      <div class="flow-box">
+        <div class="flow-label">Fee</div>
+        <div class="flow-value" style="color:#fcd34d">${fmt(fee)} sats</div>
+      </div>
+      <div class="flow-box">
+        <div class="flow-label">Change</div>
+        <div class="flow-value" style="color:#86efac">${fmt(change)} sats</div>
+      </div>
+    </div>
+    <div class="flow-track" title="Distribution of total input value">
+      <div class="flow-seg-pay" style="width:${payPct.toFixed(2)}%"></div>
+      <div class="flow-seg-fee" style="width:${feePct.toFixed(2)}%"></div>
+      <div class="flow-seg-change" style="width:${changePct.toFixed(2)}%"></div>
+    </div>
+    <div class="muted-note">Red = payments, yellow = fee, green = change.</div>
+  `;
+}
+
+function renderMeta(r) {
+  const rbfBadge = r.rbf_signaling
+    ? '<span class="badge badge-orange">RBF ON</span>'
+    : '<span class="badge badge-gray">RBF OFF</span>';
+
+  const ltBadge = r.locktime_type === 'none'
+    ? '<span class="badge badge-gray">none</span>'
+    : r.locktime_type === 'block_height'
+      ? `<span class="badge badge-blue">block ${fmt(r.locktime)}</span>`
+      : `<span class="badge badge-purple">unix ${r.locktime}</span>`;
+
+  document.getElementById('metaRow').innerHTML = `
+    <div class="meta-card">
+      <div class="label">RBF Signaling</div>
+      <div class="value">${rbfBadge}</div>
+      <div style="font-size:0.75rem;color:#64748b;margin-top:6px">
+        ${r.rbf_signaling ? 'nSequence = 0xFFFFFFFD — fee bump allowed' : 'nSequence = 0xFFFFFFFF or 0xFFFFFFFE'}
+      </div>
+    </div>
+    <div class="meta-card">
+      <div class="label">Locktime</div>
+      <div class="value">${ltBadge}</div>
+      <div style="font-size:0.75rem;color:#64748b;margin-top:6px">
+        ${r.locktime_type === 'none' ? 'No timelock — spendable immediately' :
+          r.locktime_type === 'block_height' ? 'Locked until block height' :
+          'Locked until unix timestamp'}
+      </div>
+    </div>
+  `;
+}
+
+function renderWarnings(warnings) {
+  const el = document.getElementById('warningsEl');
+  if (!warnings || warnings.length === 0) { el.innerHTML = ''; return; }
+
+  el.innerHTML = warnings.map(w => {
+    const info = WARNING_INFO[w.code] || { icon: '⚠️', title: w.code, desc: '' };
+    return `
+      <div class="warning">
+        <span class="warning-icon">${info.icon}</span>
+        <div>
+          <div class="warning-title">${info.title}</div>
+          <div class="warning-desc">${info.desc}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderInputs(inputs) {
+  document.getElementById('inputsList').innerHTML = inputs.map((u, i) => `
+    <div class="item">
+      <div class="item-row">
+        <span>#${i} <span class="badge badge-blue">${u.script_type}</span></span>
+        <span class="item-value">+${fmt(u.value_sats)} sats</span>
+      </div>
+      <div class="item-txid">${u.txid}:${u.vout}</div>
+      ${u.address ? `<div style="font-size:0.75rem;color:#64748b;margin-top:3px">${u.address}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderOutputs(outputs, changeIndex) {
+  document.getElementById('outputsList').innerHTML = outputs.map((o) => `
+    <div class="item">
+      <div class="item-row">
+        <span>
+          #${o.n}
+          <span class="badge badge-blue">${o.script_type}</span>
+          ${o.is_change ? '<span class="badge badge-orange">CHANGE</span>' : '<span class="badge badge-gray">PAYMENT</span>'}
+        </span>
+        <span class="item-value outgoing">${fmt(o.value_sats)} sats</span>
+      </div>
+      ${o.address ? `<div style="font-size:0.75rem;color:#64748b;margin-top:3px">${o.address}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function fmt(n) {
+  return n.toLocaleString();
+}
+
+function setView(view) {
+  loadingEl.classList.toggle('hidden', view !== 'loading');
+  errorEl.classList.toggle('hidden',   view !== 'error');
+  resultsEl.classList.toggle('hidden', view !== 'results');
+  emptyEl.classList.toggle('hidden',   view !== 'empty');
+}
+
+function showError(code, msg) {
+  document.getElementById('errorCode').textContent = code;
+  document.getElementById('errorMsg').textContent  = msg;
+  setView('error');
+}
+
+function copyPsbt() {
+  if (!lastReport) return;
+  navigator.clipboard.writeText(lastReport.psbt_base64)
+    .then(() => alert('PSBT copied to clipboard!'));
+}
+
+// Init
+setView('empty');
+</script>
+</body>
+</html>
